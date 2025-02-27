@@ -1,5 +1,9 @@
+#pragma once
+
 #include <cmath>
 #include <math.h>
+
+#include "colorMap.h"
 
 #define COLORMAPPINGDITHERFAST
 
@@ -52,6 +56,8 @@ inline void colormapper_init_table() {
 			continue;
 		if (background != foreground && character == L' ')
 			continue;
+		if (background == foreground && background == 0x0F)
+			foreground = 0;
 		
 		chco[b].ch = character;
 		chco[b++].co = foreground | background << 4;
@@ -63,7 +69,7 @@ inline void colormapper_init_table() {
 inline void getDitherColored(unsigned char r, unsigned char g, unsigned char b, wchar_t *ch, unsigned char *color) {
 	struct pixel {
 		unsigned char r, g, b;
-	} static const characterMap[CHARMAP_COUNT] =	
+	} static constexpr characterMap[CHARMAP_COUNT] =	
 		{{0,0,0},
 		{0,0,32},
 		{0,0,64},
@@ -622,6 +628,8 @@ inline void getDitherColored(unsigned char r, unsigned char g, unsigned char b, 
 				continue;
 			if (background != foreground && character == L' ')
 				continue;
+			if (background == foreground && background == 0x0F)
+				foreground = 0;
 			
 			if (b++ == nearest_index) {
 				*ch = character;
@@ -635,8 +643,22 @@ inline void getDitherColored(unsigned char r, unsigned char g, unsigned char b, 
 	*color = 0;//FBLACK | BBLACK;		
 	return;
 }
+
+struct DitherFast : public ColorMap::Mapper<> {
+	DitherFast():ColorMap::Mapper<>("DitherFast") {}
+
+	ColorMap::colorMappingFunction get_function() override {
+		return ColorMappingDitherFast::getDitherColored;
+	}
+
+	void init() override {
+		ColorMappingDitherFast::colormapper_init_table();
+	}
+};
+
 }
 
+auto colorMapDitherFast = ColorMappingDitherFast::DitherFast();
 auto colorMappingDitherFast = ColorMappingDitherFast::getDitherColored;
 auto colorMappingDitherFastInit = ColorMappingDitherFast::colormapper_init_table;
 #undef getDitherColored

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cmath>
 #include <math.h>
 
@@ -46,6 +48,8 @@ static void colormapper_init_table() {
 			continue;
 		if (background != foreground && character == L' ')
 			continue;
+		if (background == foreground && background == 0x0F)
+			foreground = 0;
 		
 		chco[b].ch = character;
 		chco[b++].co = foreground | background << 4;
@@ -57,7 +61,7 @@ static void colormapper_init_table() {
 static void getDitherColored(color_t r, color_t g, color_t b, wchar_t *ch, color_t *color) {
 	struct character_map {
 		color_t r, g, b;
-	} const characterMap[CHARMAP_COUNT]=	
+	} static constexpr characterMap[CHARMAP_COUNT]=	
 		{{0,0,0},
 		{0,0,32},
 		{0,0,64},
@@ -609,6 +613,8 @@ static void getDitherColored(color_t r, color_t g, color_t b, wchar_t *ch, color
 				continue;
 			if (background != foreground && character == L' ')
 				continue;
+			if (background == foreground && background == 0x0F)
+				foreground = 0;
 			
 			if (b++ == nearest_index) {
 				*ch = character;
@@ -622,8 +628,22 @@ static void getDitherColored(color_t r, color_t g, color_t b, wchar_t *ch, color
 	*color = 0;//FBLACK | BBLACK;		
 	return;
 }
+
+struct Dither : public ColorMap::Mapper<> {
+	Dither():ColorMap::Mapper<>("Dither") {}
+
+	ColorMap::colorMappingFunction get_function() override {
+		return ColorMappingDither::getDitherColored;
+	}
+
+	void init() override {
+		ColorMappingDither::colormapper_init_table();
+	}
+};
+
 }
 
+auto colorMapDither = ColorMappingDither::Dither();
 auto colorMappingDither = ColorMappingDither::getDitherColored;
 auto colorMappingDitherInit = ColorMappingDither::colormapper_init_table;
 #undef getDitherColored

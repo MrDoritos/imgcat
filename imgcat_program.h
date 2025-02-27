@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <string.h>
 #include <stdio.h>
@@ -12,6 +13,7 @@
 #include <chrono>
 
 #include "../console/advancedConsole.h"
+#include "colorMap.h"
 
 extern int errno;
 
@@ -19,14 +21,16 @@ void error_exit(std::string text, int err);
 void errno_exit(std::string text);
 
 namespace imgcat {
-    struct cpix_t {
-        wchar_t character;
-        color_t color;
+    struct cpix_t : public ColorMap::Cpix<> {
+        cpix_t() {}
+        cpix_t(const ColorMap::Cpix<> &c) : ColorMap::Cpix<>(c),alpha(0) {}
         color_t alpha;
     };
 
-    struct pixel_t {
-        color_t r, g, b, a;
+    struct pixel_t : public ColorMap::Pixel<color_t> {
+        pixel_t() {}
+        pixel_t(const ColorMap::Pixel<color_t> &p) : ColorMap::Pixel<color_t>(p),a(0) {}
+        color_t a;
     };
 
     struct Size {
@@ -152,7 +156,7 @@ namespace imgcat {
         float posX, posY;
         float newW, newH;
         float next;
-        bool doubleWidth, ascii, preSampleImage, showDebug;
+        bool doubleWidth, ascii, preSampleImage, showDebug, ditherFilter;
     };
 
     const int LINELEN = 256;
@@ -202,6 +206,8 @@ namespace imgcat {
         inline cpix_t conversionWrapper(pixel_t pixel) const {
             cpix_t ret;
             assert(converter && "conversion function not assigned");
+            if (state.ditherFilter)
+                pixel = ColorMap::Dither::get_pixel(pixel);
             converter(pixel.r, pixel.g, pixel.b, &ret.character, &ret.color);
             return ret;
         }
@@ -244,6 +250,7 @@ namespace imgcat {
 
         void drawImage() {
             std::lock_guard<std::mutex> lk(adv::buffers);
+
             float nW = state.newW * state.imageScale * screen.characterAR;
             float nH = state.newH * state.imageScale;
 
@@ -259,9 +266,6 @@ namespace imgcat {
                         continue;
 
                     cpix_t cpix = sampleImage(sampleX, sampleY, state.preSampleImage);
-
-                    if (cpix.color == 0xFF)
-                        cpix.color = 0xF0;
 
                     int offset = y * screen.width + x;
                     adv::fb[offset] = cpix.character;
@@ -351,6 +355,9 @@ namespace imgcat {
                 adv::setAscii(state.ascii = !state.ascii);
                 setCharacterAR();
                 break;
+            case '3':
+                state.ditherFilter = !state.ditherFilter;
+                break;
             case 'l':
                 state.showDebug = !state.showDebug;
                 break;
@@ -388,6 +395,7 @@ namespace imgcat {
 
             state.doubleWidth = false;
             state.ascii = true;
+            state.ditherFilter = false;
 
             setCharacterAR();
         }

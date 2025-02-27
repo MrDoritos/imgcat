@@ -1,5 +1,15 @@
+#pragma once
+
 #include <cmath>
 #include <math.h>
+
+#include "colorMap.h"
+
+#define COLORMAPPING
+
+namespace ColorMapping {
+
+using color_t = ColorMap::color_t;
 
 static void colormapper_init_table() {
 	
@@ -542,6 +552,8 @@ static void getDitherColored(color_t r, color_t g, color_t b, wchar_t *ch, color
 			continue;
 		if (background != foreground && character == L' ')
 			continue;
+		if (background == foreground && background == 0x0F)
+			foreground = 0;
 		
 		if (b++ == nearest_index) {
 			*ch = character;
@@ -1195,3 +1207,25 @@ static void getDitherColored(color_t r, color_t g, color_t b, wchar_t *ch, color
 		}
 	}
 	*/
+
+struct Basic : public ColorMap::Mapper<> {
+	Basic():ColorMap::Mapper<>("Basic") {}
+
+	ColorMap::colorMappingFunction get_function() override {
+		return ColorMapping::getDitherColored;
+	}
+
+	void init() override {
+		ColorMapping::colormapper_init_table();
+	}
+};
+
+}
+
+auto colorMapBasic = ColorMapping::Basic();
+auto colorMappingBasic = ColorMapping::getDitherColored;
+auto colorMappingBasicInit = ColorMapping::colormapper_init_table;
+#undef getDitherColored
+#undef colormapper_init_table
+#define getDitherColored colorMappingBasic
+#define colormapper_init_table colorMappingBasicInit
